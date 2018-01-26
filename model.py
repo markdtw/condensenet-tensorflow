@@ -10,22 +10,27 @@ import tensorflow as tf
 
 slim = tf.contrib.slim
 
-def cifar_arg_scope(weight_decay=5e-4):
+def cifar_arg_scope(weight_decay=1e-4):
+    weights_regularizer = tf.contrib.layers.l2_regularizer(weight_decay)
+    weights_initializer = tf.contrib.layers.xavier_initializer(uniform=False)
     batch_norm_params = {
         'decay': 0.9,
-        'epsilon': 1e-4,
+        'epsilon': 1e-5,
         'activation_fn': tf.nn.relu,
         'fused': True
     }
-    weights_regularizer = tf.contrib.layers.l2_regularizer(weight_decay)
-    weights_initializer = tf.initializers.truncated_normal()
+    variable_params = {
+        'initializer': weights_initializer,
+        'regularizer': weights_regularizer
+    }
     with slim.arg_scope([slim.conv2d],
                         activation_fn=None,
-                        biases_initializer=None,
-                        weights_regularizer=weights_regularizer,
-                        weights_initializer=weights_initializer):
-        with slim.arg_scope([slim.batch_norm], **batch_norm_params) as sc:
-            return sc
+                        #biases_initializer=None,
+                        weights_initializer=weights_initializer,
+                        weights_regularizer=weights_regularizer):
+        with slim.arg_scope([slim.batch_norm], **batch_norm_params):
+            with slim.arg_scope([slim.variable], **variable_params) as sc:
+                return sc
 
 class CondenseNet:
 
@@ -97,38 +102,55 @@ class CondenseNet:
 
     def learned_group_conv(self, net, num_outputs, kernel_size=1, scope='lgc'):
         # 1x1 learned group conv
-        n, h, w, c = net.shape
-        curr_iter = tf.cast(tf.train.get_or_create_global_step(), dtype=tf.float32)
-        condensing_stages = self.num_batches * self.total_ep / (2 * (self.condense_factor - 1))
-        stage = curr_iter / condensing_stages
+        _, _, _, num_inputs = net.shape
+        curr_iter = tf.train.get_or_create_global_step()
+        condensing_stages = self.num_batches * self.total_ep // (2 * (self.condense_factor - 1))
+        stage = curr_iter+1 // condensing_stages
 
         with tf.variable_scope(scope):
-            conv_weights = tf.get_variable('weights',
-                shape=[1, 1, c, num_outputs],
-                initializer=tf.initializers.truncated_normal())
-            masks = [tf.get_variable('mask-{}'.format(i),
-                shape=[c, num_outputs // self.num_groups],
-                #trainable=False,
-                initializer=tf.constant_initializer(1)) for i in xrange(self.num_groups)]
+            conv_weights = slim.variable('weights',
+                shape=[1, 1, num_inputs, num_outputs])
+            mask = tf.get_variable('mask',
+                shape=conv_weights.shape,
+                trainable=False,
+                initializer=tf.constant_initializer(1))
 
             def pruning():
-                weights = tf.split(conv_weights, self.num_groups, axis=-1)
-                for i, w_split in enumerate(weights):
-                    w = tf.squeeze(tf.abs(w_split * masks[i]))  # (c, num_outputs // num_groups)
-                    w_sum = tf.reduce_sum(w, axis=-1)   # (c,)
-                    _, indices = tf.nn.top_k(w_sum * -1, k=tf.cast(stage * tf.cast(c//self.condense_factor, tf.float32), tf.int32))
-                    masks[i] = tf.scatter_update(masks[i],
-                        indices[tf.cast((stage-1) * tf.cast(c//self.condense_factor, tf.float32), tf.int32):],
-                        np.zeros([c // self.condense_factor, num_outputs // self.num_groups]))
-                return masks
 
-            masks = tf.cond(tf.logical_or(tf.equal(stage, 1.0), tf.equal(stage, 2.0)),
-                true_fn=pruning, false_fn=lambda: masks)
+                weights = tf.squeeze(tf.abs(conv_weights * mask))
+                w_in, w_out = weights.shape
+                d_out = int(w_out // self.num_groups)
+                delta = int(w_in // self.condense_factor)
 
-            #pdb.set_trace()
-            mask_all = tf.concat(masks, axis=-1)    # (c, num_outputs)
-            masked_conv_weights = conv_weights * mask_all
+                # shuffle
+                weights = tf.reshape(weights, [w_in, d_out, self.num_groups])
+                weights = tf.transpose(weights, [0, 2, 1])
+                weights = tf.reshape(weights, [w_in, w_out])
 
+                control_ops = []
+                for i in xrange(self.num_groups):
+                    wi = weights[:, i * d_out:(i+1) * d_out]  # (w_in, d_out)
+                    wis = tf.reduce_sum(wi, axis=-1)    # (w_in,)
+                    _, indices = tf.nn.top_k(wis * -1, k=tf.cast(stage*delta, tf.int32))
+
+                    for j in xrange(delta):
+                        indice = indices[tf.cast((stage-1)*delta + j, tf.int32)]
+                        op = mask[:, :, indice, i::self.num_groups].assign(np.zeros([1, 1, d_out]))
+                        control_ops.append(op)
+
+                with tf.control_dependencies(control_ops):
+                    return tf.identity(mask)
+
+            #mask = tf.cond(tf.logical_or(tf.equal(stage, 1.0), tf.equal(stage, 2.0)),
+            #    true_fn=pruning, false_fn=lambda: tf.identity(mask)
+            #)
+            mask = tf.cond(tf.logical_and(
+                    tf.equal(tf.mod(curr_iter+1, condensing_stages), 0),
+                    tf.less(curr_iter+1 // condensing_stages, self.condense_factor)
+                ), true_fn=pruning, false_fn=lambda: tf.identity(mask)
+            )
+
+            masked_conv_weights = conv_weights * mask
             net = tf.nn.conv2d(net, masked_conv_weights, [1, 1, 1, 1], 'SAME')
 
         return net

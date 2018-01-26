@@ -14,7 +14,6 @@ from experiment import Experiment
 def main(args):
     """Main function"""
 
-    tf.set_random_seed(args.rseed)
     experiment = Experiment(args, (not args.evaluate))
     experiment.run()
     print ('All Done')
@@ -32,21 +31,16 @@ if __name__ == '__main__':
         help='random seed.')
     parser.add_argument('--lr',
         type=float,
-        default=2e-2,
+        default=1e-1,
         help='learning rate.')
     parser.add_argument('--ep',
         type=int,
-        default=20,
+        default=30,
         help='number of epochs.')
     parser.add_argument('--bsize',
         type=int,
-        default=128,
+        default=256,
         help='batch size.')
-    # GPU configs
-    parser.add_argument('--num-gpus',
-        type=int,
-        default=1,
-        help='number of gpus used.')
     # Log configs
     parser.add_argument('--model-path',
         type=str,

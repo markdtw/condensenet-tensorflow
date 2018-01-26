@@ -41,7 +41,6 @@ class Experiment:
                 self.dataset.make_batch()
 
         print ('======= TRAINING CONDENSE NET ==========')
-        print ('     Random Seed : {}'.format(self.args.rseed))
         print ('      Initial LR : {}'.format(self.args.lr))
         print ('        LR decay : cosine annealing')
         print ('       Optimizer : Momentum Optimizer')
@@ -72,8 +71,11 @@ class Experiment:
                 logits, predictions = model.forward(self.dataset.image_batch)
 
             # calculate loss and compute gradient.
-            loss_op = tf.losses.sparse_softmax_cross_entropy(labels=self.dataset.label_batch, logits=logits)
+            cross_entropy_loss = tf.losses.sparse_softmax_cross_entropy(labels=self.dataset.label_batch, logits=logits)
+            reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+            loss_op = cross_entropy_loss + tf.add_n(reg_loss)
             pdb.set_trace()
+
             train_op = self.opt.minimize(loss_op, global_step=tf.train.get_or_create_global_step())
 
             # worker preparation
