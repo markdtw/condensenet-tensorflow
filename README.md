@@ -32,7 +32,8 @@ Other parameters including `stages, groups, condense factor, and growth rate` ar
 
 ## Notes
 - All the default parameters settings follows the paper/official pytorch implementation.
-- Current implmentations of standard group convolution and learned group convolution are very inefficient (a bunch of reshape, transpose and concat), looking for helps to build much more efficient graph.
+- Current implmentations of standard group convolution and learned group convolution are very inefficient (a bunch of reshape, transpose and concat), looking for help to build much more efficient graph.
+- Evaluation phase (index select) has not been implemented yet, looking for potential help as well :D.
 - Issues are welcome!
 
 
