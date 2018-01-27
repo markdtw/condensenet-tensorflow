@@ -33,7 +33,7 @@ class Experiment:
                 self.lr_op = self.args.lr * 0.5 * (1.0 + tf.cos(np.pi * (tf.train.get_or_create_global_step() / total_iters)))
 
             # momentum optimizer
-            self.opt = tf.train.MomentumOptimizer(self.lr_op, 0.9)
+            self.opt = tf.train.MomentumOptimizer(self.lr_op, 0.9, use_nesterov=True)
 
             with tf.name_scope('dataset'):
                 # get data queue
@@ -74,7 +74,6 @@ class Experiment:
             cross_entropy_loss = tf.losses.sparse_softmax_cross_entropy(labels=self.dataset.label_batch, logits=logits)
             reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
             loss_op = cross_entropy_loss + tf.add_n(reg_loss)
-            pdb.set_trace()
 
             train_op = self.opt.minimize(loss_op, global_step=tf.train.get_or_create_global_step())
 
@@ -145,7 +144,6 @@ class Experiment:
             summaries_op = tf.summary.merge_all()
 
             # savers
-            self.saver = []
             self.saver = tf.train.Saver()
 
             # session configs and session
