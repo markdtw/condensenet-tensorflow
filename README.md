@@ -22,11 +22,11 @@ Official PyTorch implementation by @ShichenLiu [here](https://github.com/Shichen
 ## Train
 Use default parameters:
 ```bash
-python main.py --train
+python main.py
 ```
 Check out tunable hyper-parameters:
 ```bash
-python main.py
+python main.py --help
 ```
 Other parameters including `stages, groups, condense factor, and growth rate` are in `experiment.py`.
 
