@@ -25,21 +25,17 @@ if __name__ == '__main__':
         default=False,
         help='Evaluate model.')
     # Hyperparameters
-    parser.add_argument('--rseed',
-        type=int,
-        default=420,
-        help='random seed.')
     parser.add_argument('--lr',
         type=float,
         default=1e-1,
         help='learning rate.')
     parser.add_argument('--ep',
         type=int,
-        default=30,
+        default=300,
         help='number of epochs.')
     parser.add_argument('--bsize',
         type=int,
-        default=256,
+        default=128,
         help='batch size.')
     # Log configs
     parser.add_argument('--model-path',
