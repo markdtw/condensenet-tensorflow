@@ -66,7 +66,7 @@ class CondenseNet:
         net = tf.squeeze(net, axis=[1, 2])
         # Classifier
         with tf.variable_scope('classifier'):
-            logits = slim.fully_connected(net, self.num_classes)
+            logits = slim.fully_connected(net, self.num_classes, activation_fn=None)
             predictions = tf.argmax(logits, axis=-1)
         return logits, predictions
 
@@ -77,7 +77,7 @@ class CondenseNet:
         for j in xrange(self.stages[i]):
             curr_net = net
             net = self.dense_layer(net, self.growth[i], j)
-            net = tf.concat([curr_net, net], axis=-1)
+            net = tf.concat([net, curr_net], axis=-1)
 
         if not last:
             net = slim.avg_pool2d(net, 2, scope='avg_pool')
@@ -93,10 +93,12 @@ class CondenseNet:
         # 1x1 learned group conv
         net = slim.batch_norm(net, scope='bn-relu-lgc-{}'.format(j))
         net = self.learned_group_conv(net, self.bottleneck * growth_rate, scope='lgc-{}'.format(j))
+        #net = slim.conv2d(net, self.bottleneck * growth_rate, 1, scope='1x1conv-{}'.format(j))
 
         # 3x3 standard group conv
         net = slim.batch_norm(net, scope='bn-relu-sgc-{}'.format(j))
         net = self.standard_group_conv(net, growth_rate, scope='sgc-{}'.format(j))
+        #net = slim.conv2d(net, growth_rate, 3, scope='3x3conv-{}'.format(j))
 
         return net
 
@@ -108,12 +110,8 @@ class CondenseNet:
         stage = curr_iter+1 // condensing_stages
 
         with tf.variable_scope(scope):
-            conv_weights = slim.variable('weights',
-                shape=[1, 1, num_inputs, num_outputs])
-            mask = tf.get_variable('mask',
-                shape=conv_weights.shape,
-                trainable=False,
-                initializer=tf.constant_initializer(1))
+            conv_weights = slim.variable('weights', shape=[1, 1, num_inputs, num_outputs])
+            mask = tf.get_variable('mask', shape=conv_weights.shape, trainable=False, initializer=tf.constant_initializer(1))
 
             def pruning():
 
