@@ -31,7 +31,7 @@ python main.py --help
 Other parameters including `stages, groups, condense factor, and growth rate` are in `experiment.py`.
 
 ## Notes
-- Training for 300 epochs with the default settings reach testing accuracy 93.389% (paper report is 96.24%). There might be some details I didn't notice, feel free to point them out.
+- Training for 300 epochs with the default settings reach testing accuracy 93.389% (paper report is 94.94%). There might be some details I didn't notice, feel free to point them out.
 - All the default parameters settings follow the paper/official pytorch implementation.
 - Current implmentations of standard group convolution and learned group convolution are very inefficient (a bunch of reshape, transpose and concat), looking for help to build much more efficient graph.
 - Evaluation phase (index select) has not been implemented yet, looking for potential help as well :D.
