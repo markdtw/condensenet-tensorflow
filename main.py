@@ -14,21 +14,29 @@ from experiment import Experiment
 def main(args):
     """Main function"""
 
-    experiment = Experiment(args, (not args.evaluate))
-    experiment.run()
+    experiment = Experiment(args)
+    experiment.train()
     print ('All Done')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--evaluate',
-        type=bool,
-        default=False,
-        help='Evaluate model.')
-    # Hyperparameters
+    parser.add_argument('--stages',
+        type=str,
+        default='14-14-14',
+        help='stages.')
+    parser.add_argument('--growth',
+        type=str,
+        default='8-16-32',
+        help='growth rates.')
+    # Child Net Hyperparameters
     parser.add_argument('--lr',
         type=float,
         default=1e-1,
         help='learning rate.')
+    parser.add_argument('--momentum',
+        type=float,
+        default=9e-1,
+        help='Momentum for SGD.')
     parser.add_argument('--ep',
         type=int,
         default=300,
@@ -37,11 +45,15 @@ if __name__ == '__main__':
         type=int,
         default=128,
         help='batch size.')
-    # Log configs
-    parser.add_argument('--model-path',
+    # Logs
+    parser.add_argument('--log-freq',
+        type=int,
+        default=100,
+        help='Log every n iterations.')
+    parser.add_argument('--model-dir',
         type=str,
-        default=None,
-        help='Pre-trained model path.')
+        default='./log',
+        help='Where to save the models.')
     args, unparsed = parser.parse_known_args()
     if len(unparsed) != 0:
         raise SystemExit('Unknown argument: {}'.format(unparsed))
