@@ -25,7 +25,7 @@ def cifar_arg_scope(weight_decay=1e-4):
     }
     with slim.arg_scope([slim.conv2d],
                         activation_fn=None,
-                        #biases_initializer=None,
+                        biases_initializer=None,
                         weights_initializer=weights_initializer,
                         weights_regularizer=weights_regularizer):
         with slim.arg_scope([slim.batch_norm], **batch_norm_params):
